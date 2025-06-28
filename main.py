@@ -549,7 +549,7 @@ def create_app():
     # Load model state khi khởi động ứng dụng
     load_model_state(app) # Gọi hàm tải trạng thái ở đây
 
-    app.API_URL = os.getenv("API_URL", "https://wanglinapiws.up.railway.app/api/taixiu")
+    app.API_URL = os.getenv("API_URL", "https://apihitclub.up.railway.app/api/taixiu")
 
     def fetch_data_from_api():
         while True:
