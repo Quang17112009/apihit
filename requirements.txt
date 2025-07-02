@@ -1,6 +1,4 @@
 Flask
-Flask-Cors
 requests
+APScheduler
 waitress
-scikit-learn
-joblib
