@@ -6,9 +6,9 @@ import random
 import threading
 import logging
 from collections import defaultdict, deque
-from flask import Flask, jsonify, request # Import request để truy cập header
+from flask import Flask, jsonify
 from flask_cors import CORS
-import requests
+import requests # Thêm thư viện requests để gọi API
 
 # --- Basic Setup ---
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -302,9 +302,9 @@ def predict_advanced(app, history_str):
     features = get_logistic_features(history_str)
     z = app.logistic_bias + sum(w * f for w, f in zip(app.logistic_weights, features))
     try:
-        p = 1.0 / (1.0 + math.exp(-z))
+        prob_tai_logistic = 1.0 / (1.0 + math.exp(-z))
     except OverflowError:
-        p = 0.0 if z < 0 else 1.0
+        prob_tai_logistic = 0.0 if z < 0 else 1.0
         
     logistic_pred = 'Tài' if prob_tai_logistic > 0.5 else 'Xỉu'
     logistic_conf = max(prob_tai_logistic, 1 - prob_tai_logistic)
@@ -381,11 +381,6 @@ def create_app():
     
     # --- Cấu hình API endpoint mới ---
     app.API_URL = "https://apib52.up.railway.app/api/taixiumd5"
-    # --- THÊM API KEY VÀO ĐÂY ---
-    # RẤT QUAN TRỌNG: KHÔNG NÊN ĐỂ KEY CỨNG TRONG CODE THẬT!
-    # NÊN DÙNG BIẾN MÔI TRƯỜNG: os.getenv("API_KEY", "YOUR_DEFAULT_KEY")
-    app.API_PREDICTION_KEY = os.getenv("TAIXIU_API_KEY", "your_secret_api_key_123") 
-
 
     def fetch_data_from_api():
         while True:
@@ -403,7 +398,7 @@ def create_app():
 
                     if phien is None or ket_qua not in ["Tài", "Xỉu"]:
                         logging.warning(f"Invalid data received from API: {latest_result}")
-                        time.sleep(2) # Giảm thời gian chờ nếu data không hợp lệ
+                        time.sleep(5)
                         continue
 
                     with app.lock:
@@ -437,24 +432,8 @@ def create_app():
             time.sleep(2) # Poll API every 2 seconds
 
     # --- API Endpoints ---
-    @app.route("/api/taixiumd5", methods=["GET"])
+    @app.route("/api/taixiumd5", methods=["GET"]) # Đổi tên endpoint để phản ánh nguồn mới
     def get_taixiu_prediction():
-        # --- BẮT ĐẦU KIỂM TRA API KEY ---
-        api_key_header = request.headers.get('X-API-Key') # Lấy key từ header 'X-API-Key'
-        api_key_param = request.args.get('api_key') # Hoặc lấy key từ query parameter 'api_key'
-
-        if not api_key_header and not api_key_param:
-            return jsonify({"error": "Unauthorized: API Key is missing."}), 401
-
-        # Ưu tiên key trong header nếu có, nếu không thì dùng query param
-        received_api_key = api_key_header if api_key_header else api_key_param
-
-        if received_api_key != app.API_PREDICTION_KEY:
-            logging.warning(f"Unauthorized access attempt with key: {received_api_key}")
-            return jsonify({"error": "Unauthorized: Invalid API Key."}), 401
-        # --- KẾT THÚC KIỂM TRA API KEY ---
-
-
         with app.lock:
             # Đảm bảo app.history có đủ dữ liệu để dự đoán
             if len(app.history) < 2:
