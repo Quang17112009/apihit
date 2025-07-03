@@ -1,4 +1,4 @@
 Flask
 requests
-APScheduler
+flask-cors
 waitress
